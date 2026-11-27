@@ -13,7 +13,7 @@
 // text capped at 160 KiB. Anything over a cap fails loudly here rather
 // than silently at the gate.
 
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -34,8 +34,13 @@ requireDir(GAME_DIR, 'game/');
 requireDir(SHOTS_DIR, 'screenshots/');
 
 // Start from an empty output directory so a stale file can never leak in.
-rmSync(outputDir, { recursive: true, force: true });
+// Never remove the output directory itself: the grader runs as uid 65534
+// on a read-only root, so removing /output would fail with EACCES.
+// Clear only the entries inside it.
 mkdirSync(outputDir, { recursive: true });
+for (const entry of readdirSync(outputDir)) {
+  rmSync(join(outputDir, entry), { recursive: true, force: true });
+}
 
 cpSync(GAME_DIR, join(outputDir, 'game'), { recursive: true });
 cpSync(SHOTS_DIR, join(outputDir, 'screenshots'), { recursive: true });
